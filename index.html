@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi Chat Ollama</title>
+    <style>
+        /* Reset and global styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            grid-gap: 20px;
+            height: calc(100vh - 40px);
+        }
+        
+        /* Configuration panel */
+        .config-panel {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+        
+        .config-panel h2 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .config-section {
+            margin-bottom: 20px;
+        }
+        
+        .config-section h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #555;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background-color: #3e8e41;
+        }
+        
+        /* Chat container */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            padding: 15px;
+            background-color: #075e54;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #e5ded8;
+        }
+        
+        .message {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            position: relative;
+            word-wrap: break-word;
+        }
+        
+        .message.user {
+            background-color: #dcf8c6;
+            align-self: flex-end;
+            margin-left: auto;
+            border-bottom-right-radius: 0;
+        }
+        
+        .message.agent-a {
+            background-color: #fff;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+        
+        .message.agent-b {
+            background-color: #e1ffc7;
+            align-self: flex-start;
+            border-bottom-left-radius: 0;
+        }
+        
+        .message .sender {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 12px;
+        }
+        
+        .message .content {
+            color: #303030;
+        }
+        
+        .message .timestamp {
+            font-size: 11px;
+            color: #999;
+            text-align: right;
+            margin-top: 5px;
+        }
+        
+        .typing-dots {
+            display: inline-block;
+        }
+        
+        .typing-dots span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin-right: 3px;
+            background-color: #888;
+            border-radius: 50%;
+            opacity: 0.4;
+            animation: typingAnimation 1s infinite;
+        }
+        
+        .typing-dots span:nth-child(1) {
+            animation-delay: 0s;
+        }
+        
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.3s;
+        }
+        
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+        
+        @keyframes typingAnimation {
+            0%, 100% {
+                opacity: 0.4;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+        
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            background-color: white;
+            border-top: 1px solid #eee;
+        }
+        
+        .chat-input textarea {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 10px 15px;
+            margin-right: 10px;
+            resize: none;
+        }
+        
+        .chat-input button {
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .save-btn {
+            background-color: #2196F3;
+        }
+        
+        .save-btn:hover {
+            background-color: #0b7dda;
+        }
+        
+        .conversation-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        
+        .status {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+
+        .connection-status {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: #007bff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 5px;
+        }
+        
+        /* Debug console */
+        .debug-console {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 100px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .debug-toggle {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        
+        .debug-toggle input {
+            margin-right: 5px;
+            width: auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="config-panel">
+            <h2>Configuration</h2>
+            
+            <div class="config-section">
+                <h3>Agent A</h3>
+                <label for="name-a">Name:</label>
+                <input type="text" id="name-a" value="Agent A">
+                <label for="model-a">Model:</label>
+                <select id="model-a">
+                    <option value="loading">Loading models...</option>
+                </select>
+                <label for="system-prompt-a">System Prompt:</label>
+                <textarea id="system-prompt-a">You are a helpful assistant. Keep your responses concise and engaging.</textarea>
+            </div>
+            
+            <div class="config-section">
+                <h3>Agent B</h3>
+                <label for="name-b">Name:</label>
+                <input type="text" id="name-b" value="Agent B">
+                <label for="model-b">Model:</label>
+                <select id="model-b">
+                    <option value="loading">Loading models...</option>
+                </select>
+                <label for="system-prompt-b">System Prompt:</label>
+                <textarea id="system-prompt-b">You are a knowledgeable assistant. Explain complex concepts in simple terms.</textarea>
+            </div>
+            
+            <div class="config-section">
+                <h3>Conversation Settings</h3>
+                <label for="conversation-length">Max AI Exchanges Before User Input:</label>
+                <input type="number" id="conversation-length" value="10">
+                <label for="max-tokens">Max Tokens per Response:</label>
+                <input type="number" id="max-tokens" value="150">
+            </div>
+            
+            <div class="conversation-controls">
+                <button id="start-btn">Start Conversation</button>
+                <button id="save-btn" class="save-btn">Save Chat</button>
+            </div>
+            
+            <div id="status-message" class="status"></div>
+            
+            <div id="connection-status" class="connection-status">
+                <div class="loading-spinner"></div> Checking connection to Ollama server...
+            </div>
+            
+            <div class="debug-toggle">
+                <input type="checkbox" id="debug-toggle" />
+                <label for="debug-toggle">Show Debug Console</label>
+            </div>
+            
+            <!-- Debug console for troubleshooting -->
+            <div id="debug-console" class="debug-console">
+                Debug logs will appear here
+            </div>
+        </div>
+        
+        <div class="chat-container">
+            <div class="chat-header" id="chat-header">
+                Multi Chat Ollama
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <!-- Messages will be added here -->
+            </div>
+            <div class="chat-input">
+                <textarea id="user-input" placeholder="Type a message to start the conversation..."></textarea>
+                <button id="send-btn">→</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const chatMessages = document.getElementById('chat-messages');
+        const chatHeader = document.getElementById('chat-header');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-btn');
+        const startButton = document.getElementById('start-btn');
+        const saveButton = document.getElementById('save-btn');
+        const statusMessage = document.getElementById('status-message');
+        const connectionStatus = document.getElementById('connection-status');
+        const debugConsole = document.getElementById('debug-console');
+        const debugToggle = document.getElementById('debug-toggle');
+        
+        // Configuration Elements
+        const nameA = document.getElementById('name-a');
+        const modelA = document.getElementById('model-a');
+        const systemPromptA = document.getElementById('system-prompt-a');
+        const nameB = document.getElementById('name-b');
+        const modelB = document.getElementById('model-b');
+        const systemPromptB = document.getElementById('system-prompt-b');
+        const conversationLength = document.getElementById('conversation-length');
+        const maxTokens = document.getElementById('max-tokens');
+        
+        // Required system prompt prefix (hidden from UI)
+        const REQUIRED_SYSTEM_PROMPT_PREFIX = "Only speak for yourself and never pretend to be another participant in this conversation. ";
+        
+        // Conversation State
+        let conversation = [];
+        let isConversationActive = false;
+        let currentTurn = 'A'; // Start with Agent A
+        let exchangeCount = 0; // Count of AI exchanges since last user input
+        let totalExchanges = 0; // Total exchanges in the conversation
+        let agentAHistory = [];
+        let agentBHistory = [];
+        let availableModels = [];
+        
+        // Debug logging function
+        function debugLog(message) {
+            console.log(message);
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            debugConsole.appendChild(logEntry);
+            debugConsole.scrollTop = debugConsole.scrollHeight;
+        }
+        
+        // Debug toggle
+        debugToggle.addEventListener('change', function() {
+            debugConsole.style.display = this.checked ? 'block' : 'none';
+        });
+        
+        // Check connection to Ollama server on load and load models
+        checkOllamaConnection();
+        
+        // Update chat header when agent names change
+        function updateChatHeader() {
+            chatHeader.textContent = `Chat: ${nameA.value} & ${nameB.value}`;
+        }
+        
+        // Listen for name changes
+        nameA.addEventListener('input', updateChatHeader);
+        nameB.addEventListener('input', updateChatHeader);
+        updateChatHeader();
+
+        // Add welcome message to chat area
+        function addWelcomeMessage() {
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.className = 'message';
+            welcomeDiv.style.backgroundColor = '#e2e3e5';
+            welcomeDiv.style.maxWidth = '90%';
+            welcomeDiv.style.margin = '20px auto';
+            welcomeDiv.style.textAlign = 'center';
+            welcomeDiv.style.borderRadius = '10px';
+            welcomeDiv.style.padding = '15px';
+            
+            const welcomeContent = document.createElement('div');
+            welcomeContent.innerHTML = `
+                <h3 style="margin-bottom: 10px; color: #555;">Welcome to Multi Chat Ollama!</h3>
+                <p style="margin-bottom: 10px;">Before starting a conversation:</p>
+                <ol style="text-align: left; margin-left: 20px; margin-bottom: 10px;">
+                    <li>Configure both agent names and system prompts</li>
+                    <li>Select appropriate models for each agent</li>
+                    <li>Adjust conversation settings as needed</li>
+                </ol>
+                <p style="margin-bottom: 5px;">When you're ready, type a message below to start the conversation, or use the "Start Conversation" button.</p>
+                <p style="font-style: italic; font-size: 12px;">Your first message sets the topic and tone for the entire conversation!</p>
+            `;
+            
+            welcomeDiv.appendChild(welcomeContent);
+            chatMessages.appendChild(welcomeDiv);
+        }
+        
+        addWelcomeMessage();
+        
+        // Helper Functions
+        async function checkOllamaConnection() {
+            debugLog("Checking connection to Ollama server...");
+            try {
+                const response = await fetch('http://localhost:11434/api/version');
+                if (response.ok) {
+                    debugLog("Connected to Ollama server");
+                    connectionStatus.innerHTML = '✓ Connected to Ollama server';
+                    connectionStatus.style.backgroundColor = '#d4edda';
+                    connectionStatus.style.color = '#155724';
+                    
+                    // Get available models
+                    loadAvailableModels();
+                } else {
+                    debugLog("Connected to server but received error response");
+                    connectionStatus.innerHTML = '⚠️ Connected to Ollama server but received an error response';
+                    connectionStatus.style.backgroundColor = '#fff3cd';
+                    connectionStatus.style.color = '#856404';
+                }
+            } catch (error) {
+                debugLog("Failed to connect to Ollama server: " + error);
+                connectionStatus.innerHTML = '❌ Could not connect to Ollama server. Make sure it is running on http://localhost:11434';
+                connectionStatus.style.backgroundColor = '#f8d7da';
+                connectionStatus.style.color = '#721c24';
+                
+                // Set default models anyway
+                setDefaultModels(['llama3']);
+            }
+        }
+        
+        async function loadAvailableModels() {
+            debugLog("Loading available models...");
+            try {
+                const response = await fetch('http://localhost:11434/api/tags');
+                if (response.ok) {
+                    const data = await response.json();
+                    debugLog("Received models data: " + JSON.stringify(data).substring(0, 100) + "...");
+                    if (data.models && data.models.length > 0) {
+                        availableModels = data.models.map(m => m.name);
+                        
+                        // Update connection status
+                        connectionStatus.innerHTML = `✓ Connected to Ollama server | ${availableModels.length} models available`;
+                        
+                        // Populate dropdowns
+                        populateModelDropdowns(availableModels);
+                    } else {
+                        debugLog("No models found");
+                        connectionStatus.innerHTML += ' | No models found';
+                        setDefaultModels(['llama3']);
+                    }
+                } else {
+                    debugLog("Error loading models: " + response.statusText);
+                    setDefaultModels(['llama3']);
+                }
+            } catch (error) {
+                debugLog("Error loading models: " + error);
+                setDefaultModels(['llama3']);
+            }
+        }
+        
+        function setDefaultModels(defaultModels) {
+            debugLog("Setting default models: " + defaultModels);
+            populateModelDropdowns(defaultModels);
+        }
+        
+        function populateModelDropdowns(models) {
+            debugLog("Populating model dropdowns with: " + models);
+            // Clear existing options
+            modelA.innerHTML = '';
+            modelB.innerHTML = '';
+            
+            // Add models to dropdowns
+            models.forEach(model => {
+                const optionA = document.createElement('option');
+                optionA.value = model;
+                optionA.textContent = model;
+                modelA.appendChild(optionA);
+                
+                const optionB = document.createElement('option');
+                optionB.value = model;
+                optionB.textContent = model;
+                modelB.appendChild(optionB);
+            });
+            
+            // Set default selections if possible
+            if (models.includes('llama3')) {
+                modelA.value = 'llama3';
+                modelB.value = 'llama3';
+            } else if (models.length > 0) {
+                modelA.value = models[0];
+                // Use a different model for B if available
+                modelB.value = models.length > 1 ? models[1] : models[0];
+            }
+        }
+        
+        function formatTimestamp() {
+            const now = new Date();
+            return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        }
+        
+        // Remove sender name prefix if it exists at the beginning of a message
+        function removeNamePrefix(sender, content) {
+            // Check if the content starts with the sender's name followed by a colon
+            const prefixRegex = new RegExp(`^${sender}:\\s*`, 'i');
+            return content.replace(prefixRegex, '');
+        }
+        
+        function addMessage(sender, content, isUser = false) {
+            debugLog(`Adding message from ${sender}: ${content.substring(0, 30)}${content.length > 30 ? '...' : ''}`);
+            
+            // Remove sender name prefix if it exists
+            const cleanContent = removeNamePrefix(sender, content);
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : (sender === nameA.value ? 'agent-a' : 'agent-b')}`;
+            
+            const senderDiv = document.createElement('div');
+            senderDiv.className = 'sender';
+            senderDiv.textContent = sender;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'content';
+            contentDiv.textContent = cleanContent;
+            
+            const timestampDiv = document.createElement('div');
+            timestampDiv.className = 'timestamp';
+            timestampDiv.textContent = formatTimestamp();
+            
+            messageDiv.appendChild(senderDiv);
+            messageDiv.appendChild(contentDiv);
+            messageDiv.appendChild(timestampDiv);
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Add to conversation history (with original content for context preservation)
+            conversation.push({
+                sender: sender,
+                content: content,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Update agent histories for context
+            const userPrefix = isUser ? "User: " : "";
+            if (sender === nameA.value) {
+                agentAHistory.push({ role: "assistant", content: content });
+                agentBHistory.push({ role: "user", content: `${nameA.value}: ${content}` });
+            } else if (sender === nameB.value) {
+                agentBHistory.push({ role: "assistant", content: content });
+                agentAHistory.push({ role: "user", content: `${nameB.value}: ${content}` });
+            } else if (isUser) {
+                // Reset exchange count when user sends a message
+                exchangeCount = 0;
+                
+                // Add user message to both agent histories
+                agentAHistory.push({ role: "user", content: `${userPrefix}${content}` });
+                agentBHistory.push({ role: "user", content: `${userPrefix}${content}` });
+            }
+        }
+        
+        function showStatus(message, isError = false) {
+            debugLog(`Status message: ${message} (${isError ? 'error' : 'success'})`);
+            statusMessage.textContent = message;
+            statusMessage.className = `status ${isError ? 'error' : 'success'}`;
+            
+            // Clear after 5 seconds
+            setTimeout(() => {
+                statusMessage.className = 'status';
+            }, 5000);
+        }
+        
+        async function sendToOllama(agent, messages, stream = true) {
+            const agentModel = agent === nameA.value ? modelA.value : modelB.value;
+            
+            debugLog(`Sending to Ollama for ${agent} using model ${agentModel}`);
+            debugLog(`Messages: ${JSON.stringify(messages.slice(0, 1))}`);
+            
+            try {
+                const response = await fetch('http://localhost:11434/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: agentModel,
+                        messages: messages,
+                        stream: stream,
+                        options: {
+                            temperature: 0.7,
+                            top_p: 0.9,
+                            max_tokens: parseInt(maxTokens.value)
+                        }
+                    })
+                });
+                
+                debugLog(`Response status: ${response.status}`);
+                return response;
+            } catch (error) {
+                debugLog(`Error sending to ${agent}: ${error}`);
+                showStatus(`Failed to connect to Ollama server. Make sure the Ollama server is running on port 11434.`, true);
+                return null;
+            }
+        }
+        
+        async function streamResponse(agent, messages) {
+            debugLog(`Starting stream response for ${agent}`);
+            
+            // Create message bubble with typing indicator
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${agent === nameA.value ? 'agent-a' : 'agent-b'}`;
+            
+            const senderDiv = document.createElement('div');
+            senderDiv.className = 'sender';
+            senderDiv.textContent = agent;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'content';
+            
+            // Add typing indicator dots
+            const typingDotsDiv = document.createElement('div');
+            typingDotsDiv.className = 'typing-dots';
+            for (let i = 0; i < 3; i++) {
+                const dot = document.createElement('span');
+                typingDotsDiv.appendChild(dot);
+            }
+            contentDiv.appendChild(typingDotsDiv);
+            
+            const timestampDiv = document.createElement('div');
+            timestampDiv.className = 'timestamp';
+            timestampDiv.textContent = formatTimestamp();
+            
+            messageDiv.appendChild(senderDiv);
+            messageDiv.appendChild(contentDiv);
+            messageDiv.appendChild(timestampDiv);
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            const response = await sendToOllama(agent, messages, true);
+            if (!response || !response.ok) {
+                debugLog(`Failed to get response for ${agent}`);
+                messageDiv.remove();
+                return null;
+            }
+            
+            const reader = response.body.getReader();
+            let responseText = '';
+            let decoder = new TextDecoder();
+            let buffer = '';
+            
+            try {
+                debugLog(`Starting to read stream for ${agent}`);
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) {
+                        debugLog(`Stream done for ${agent}`);
+                        break;
+                    }
+                    
+                    // Decode chunk and add to buffer
+                    const chunk = decoder.decode(value, {stream: true});
+                    buffer += chunk;
+                    
+                    // Process complete JSON objects
+                    let newlineIndex;
+                    while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+                        const line = buffer.slice(0, newlineIndex);
+                        buffer = buffer.slice(newlineIndex + 1);
+                        
+                        if (line.trim() !== '') {
+                            try {
+                                debugLog(`Processing line: ${line.substring(0, 50)}...`);
+                                const jsonData = JSON.parse(line);
+                                if (jsonData.message && jsonData.message.content !== undefined) {
+                                    responseText += jsonData.message.content;
+                                    // Clear typing indicator and update with content
+                                    contentDiv.innerHTML = '';
+                                    contentDiv.textContent = removeNamePrefix(agent, responseText);
+                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                                }
+                            } catch (e) {
+                                debugLog(`Error parsing JSON: ${e} - Line: ${line}`);
+                            }
+                        }
+                    }
+                }
+                
+                // Handle any remaining buffer content
+                if (buffer.trim() !== '') {
+                    try {
+                        debugLog(`Processing remaining buffer: ${buffer.substring(0, 50)}...`);
+                        const jsonData = JSON.parse(buffer);
+                        if (jsonData.message && jsonData.message.content !== undefined) {
+                            responseText += jsonData.message.content;
+                            contentDiv.innerHTML = '';
+                            contentDiv.textContent = removeNamePrefix(agent, responseText);
+                        }
+                    } catch (e) {
+                        debugLog(`Error parsing final JSON: ${e}`);
+                    }
+                }
+                
+                // If we got a complete message with done:true, check for errors
+                if (buffer.includes('"done":true') && !responseText) {
+                    debugLog(`Response completed but no content received`);
+                    messageDiv.remove(); // Remove the placeholder if no content
+                    return null;
+                }
+                
+            } catch (error) {
+                debugLog(`Error reading stream: ${error}`);
+                messageDiv.remove(); // Remove the placeholder on error
+                return null;
+            }
+            
+            debugLog(`Completed response for ${agent}: ${responseText.substring(0, 50)}...`);
+            return responseText;
+        }
+        
+        // Function to create a complete system prompt by combining the required prefix with user input
+        function getEnhancedSystemPrompt(basePrompt, agentName) {
+            // Add name and required instructions to system prompt
+            return `You are ${agentName}. ${REQUIRED_SYSTEM_PROMPT_PREFIX}${basePrompt} Always speak only as ${agentName} and never pretend to be anyone else in the conversation.`;
+        }
+        
+        async function continueConversation() {
+            // Check if max exchanges since user input has been reached
+            const maxExchanges = parseInt(conversationLength.value);
+            if (!isConversationActive || exchangeCount >= maxExchanges) {
+                if (exchangeCount >= maxExchanges) {
+                    debugLog(`Max AI exchanges (${maxExchanges}) reached, waiting for user input`);
+                    showStatus(`Max AI exchanges reached. Please respond to continue the conversation.`);
+                } else {
+                    showStatus('Conversation completed.');
+                }
+                isConversationActive = false;
+                return;
+            }
+            
+            const currentAgent = currentTurn === 'A' ? nameA.value : nameB.value;
+            const currentHistory = currentTurn === 'A' ? agentAHistory : agentBHistory;
+            const baseSystemPrompt = currentTurn === 'A' ? systemPromptA.value : systemPromptB.value;
+            
+            debugLog(`Continue conversation - turn for ${currentAgent} (exchange ${exchangeCount + 1} of ${maxExchanges})`);
+            
+            // Create enhanced system prompt with name and required instructions
+            const enhancedSystemPrompt = getEnhancedSystemPrompt(baseSystemPrompt, currentAgent);
+            
+            // Add system prompt to the beginning
+            const messagesWithSystem = [
+                { 
+                    role: "system", 
+                    content: enhancedSystemPrompt
+                },
+                ...currentHistory
+            ];
+            
+            debugLog(`Sending ${messagesWithSystem.length} messages to ${currentAgent}`);
+            const response = await streamResponse(currentAgent, messagesWithSystem);
+            
+            if (response) {
+                // Since the message is already added to UI during streaming,
+                // we only need to update internal histories
+                if (currentAgent === nameA.value) {
+                    agentAHistory.push({ role: "assistant", content: response });
+                    agentBHistory.push({ role: "user", content: `${nameA.value}: ${response}` });
+                } else {
+                    agentBHistory.push({ role: "assistant", content: response });
+                    agentAHistory.push({ role: "user", content: `${nameB.value}: ${response}` });
+                }
+                
+                // Add to conversation history
+                conversation.push({
+                    sender: currentAgent,
+                    content: response,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Increment exchange counters
+                exchangeCount++;
+                totalExchanges++;
+                
+                // Switch turns
+                currentTurn = currentTurn === 'A' ? 'B' : 'A';
+                
+                // Continue the conversation after a short delay
+                setTimeout(() => {
+                    continueConversation();
+                }, 1000);
+            } else {
+                showStatus(`Failed to get response from ${currentAgent}`, true);
+                isConversationActive = false;
+            }
+        }
+        
+        function startConversation() {
+            if (isConversationActive) {
+                showStatus('Conversation is already active!');
+                return;
+            }
+            
+            debugLog("Starting conversation");
+            
+            // Reset state
+            conversation = [];
+            agentAHistory = [];
+            agentBHistory = [];
+            exchangeCount = 0;
+            totalExchanges = 0;
+            currentTurn = 'A';
+            
+            // Clear chat
+            chatMessages.innerHTML = '';
+            
+            // Prompt user to enter a message if the input field is empty
+            if (userInput.value.trim() === '') {
+                showStatus('Please type a message in the input field to start the conversation.', true);
+                return;
+            }
+            
+            // Add user's message from input field
+            const message = userInput.value.trim();
+            userInput.value = '';
+            addMessage('User', message, true);
+            isConversationActive = true;
+            continueConversation();
+        }
+        
+        function saveConversation() {
+            if (conversation.length === 0) {
+                showStatus('No conversation to save!', true);
+                return;
+            }
+            
+            debugLog("Saving conversation");
+            const conversationJson = JSON.stringify(conversation, null, 2);
+            const blob = new Blob([conversationJson], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `conversation_${nameA.value}_${nameB.value}_${new Date().toISOString().replace(/:/g, '-')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            showStatus('Conversation saved!');
+        }
+        
+        // Event Listeners
+        if (startButton) {
+            debugLog("Adding event listener for start button");
+            startButton.addEventListener('click', startConversation);
+        } else {
+            debugLog("ERROR: Start button not found!");
+        }
+        
+        if (saveButton) {
+            debugLog("Adding event listener for save button");
+            saveButton.addEventListener('click', saveConversation);
+        } else {
+            debugLog("ERROR: Save button not found!");
+        }
+        
+        if (sendButton) {
+            debugLog("Adding event listener for send button");
+            sendButton.addEventListener('click', () => {
+                debugLog("Send button clicked");
+                const message = userInput.value.trim();
+                if (message) {
+                    debugLog(`Sending message: ${message}`);
+                    userInput.value = '';
+                    addMessage('User', message, true);
+                    
+                    // Start/continue the conversation
+                    isConversationActive = true;
+                    continueConversation();
+                }
+            });
+        } else {
+            debugLog("ERROR: Send button not found!");
+        }
+        
+        if (userInput) {
+            debugLog("Adding event listener for user input");
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    debugLog("Enter key pressed in input");
+                    e.preventDefault();
+                    sendButton.click();
+                }
+            });
+        } else {
+            debugLog("ERROR: User input not found!");
+        }
+        
+        // Initial debug log
+        debugLog("Application initialized");
+    </script>
+</body>
+</html>
